@@ -45,7 +45,7 @@ php -r "echo extension_loaded('pdo_pgsql') ? 'pdo_pgsql OK' : 'pdo_pgsql MISSING
 ### 1. Get the code
 
 ```bash
-git clone <your-repo-url> symptom-tracker
+git clone https://github.com/Maximillan10/Cancer-Symptom-Monitoring-System.git symptom-tracker
 cd symptom-tracker
 composer install
 cp .env.example .env
@@ -79,7 +79,7 @@ If the password contains `#` or `$`, wrap it in double quotes.
 ### 4. Run the migrations
 
 ```bash
-php artisan migrate
+php artisan migrate --seed
 ```
 
 ### 5. Start the app
@@ -105,13 +105,29 @@ php artisan install:api      # installs Sanctum; answer "no" to running migratio
 php artisan migrate
 ```
 
-## Quick verification
+## Running the project and tests
 
 ```bash
-php artisan tinker --execute='$u = \App\Models\User::create(["name"=>"Dr Test","email"=>"test@example.com","password"=>"password","role"=>"clinician"]); $p = \App\Models\Patient::create(["assigned_clinician_id"=>$u->id,"name"=>"Patient A","dob"=>"1970-01-01","diagnosis"=>"Test"]); \App\Models\SymptomSubmission::create(["patient_id"=>$p->id,"submitted_at"=>now(),"pain"=>6,"fatigue"=>7]); echo "OK: ".\App\Models\SymptomSubmission::count()." submission(s)";'
+php artisan migrate --seed     # creates tables and simulated patients
+php artisan serve              # http://127.0.0.1:8000
+php artisan test               # full PHPUnit suite
 ```
 
-Expected output: `OK: 1 submission(s)`
+Log in with the seeded demo clinician (see `docs/README.md` for the email and password).
+
+## Repository layout
+
+| Folder | Contents |
+|---|---|
+| app/ | Controllers, models, services (alert engine), observers |
+| database/ | Migrations and seeders (25 simulated patients) |
+| resources/ | Blade views (dashboard, alerts, thresholds) |
+| routes/ | Web and API routes |
+| postman/ | Postman API collection |
+| scripts/ | Load-test script |
+| tests/ | PHPUnit tests |
+| docs/ | ERD, test report, setup notes |
+
 
 ## Database schema
 
@@ -125,6 +141,8 @@ Matches Section 3.3 of the approved proposal.
 | `alert_thresholds` | Per-clinician alert rules | `clinician_id`, `symptom_type`, `threshold_value`, `window_days`, `is_active` |
 | `alerts` | Raised when a submission breaches a threshold | `patient_id`, `triggered_at`, `symptom_type`, `severity`, `threshold_breached`, `resolved_at`, `resolved_by` |
 | `reports` | Generated patient summaries | `patient_id`, `generated_by`, `generated_at`, `report_type`, `content_json` |
+
+The `alerts` table also has `rule`, `trigger_value` and `message` columns, so each alert explains itself.
 
 ### Relationships
 
@@ -147,15 +165,15 @@ Matches Section 3.3 of the approved proposal.
 
 ## Project milestones
 
-| Milestone | Status |
-|---|---|
-| Proposal approval | Done |
-| DB schema and environment setup | Done once `php artisan migrate` succeeds |
-| Backend: authentication and API (Sanctum, REST endpoints, Postman docs) | Next |
-| Prototype: clinician dashboard frontend (Bootstrap 5, Chart.js, D3.js) | Planned |
-| Alert system and symptom trend analysis | Planned |
-| System testing and validation (PHPUnit, 20+ simulated scenarios) | Planned |
-| Documentation, report writing, and submission | Planned |
+| Milestone | Status | Commit |
+|---|---|---|
+| Proposal and presentation approval | Done | Approved Apr 15, 2026 |
+| DB Schema & Environment Setup | Done | `DB schema and environment setup` |
+| Backend Development: Authentication & API | Done | `Add Sanctum authentication and patient/symptom REST API` |
+| Prototype: Clinician Dashboard Frontend | Done | `Add clinician dashboard: login, patient list, Chart.js trends and D3 heatmap` |
+| Alert System & Symptom Trend Analysis | Done | `Add alert engine, thresholds settings, alerts page and resolve workflow` |
+| System Testing & Validation | Done | `System Testing & Validation` |
+| Documentation, Report Writing & Submission | In progress | Final report and evidence files |
 
 ## Troubleshooting
 

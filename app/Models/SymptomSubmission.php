@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Observers\SymptomSubmissionObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([SymptomSubmissionObserver::class])]
 class SymptomSubmission extends Model
 {
     use HasFactory;
@@ -35,7 +38,7 @@ class SymptomSubmission extends Model
         ];
     }
 
-    /** The six symptom columns this system tracks — used by the alert engine to iterate. */
+    /** The six symptom columns this system tracks, used by the alert engine to iterate. */
     public const SYMPTOM_TYPES = ['pain', 'fatigue', 'nausea', 'anxiety', 'appetite', 'dyspnea'];
 
     public function patient(): BelongsTo
@@ -43,7 +46,7 @@ class SymptomSubmission extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    /** Convenience: symptom_type => severity pairs, skipping nulls. Used by SymptomSubmissionObserver. */
+    /** Convenience: symptom_type => severity pairs, skipping nulls. */
     public function severities(): array
     {
         return collect(self::SYMPTOM_TYPES)

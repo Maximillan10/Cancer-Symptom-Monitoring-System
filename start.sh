@@ -4,9 +4,12 @@ set -e
 # Build the database tables on every start (safe to repeat).
 php artisan migrate --force
 
-# Optional: load the demo clinician and sample patients. Set SEED_DEMO=true for the first deploy only.
+# Create the editor account (first address in EDITOR_EMAILS) if it is missing. Safe to repeat.
+php artisan app:ensure-editor
+
+# Optional: load the demo data. Leave SEED_DEMO=false, the seeder cannot run twice.
 if [ "$SEED_DEMO" = "true" ]; then
-    php artisan db:seed --force
+    php artisan db:seed --force || echo "Seeding skipped (it was already done)."
 fi
 
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-10000}"

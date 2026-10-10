@@ -17,6 +17,12 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Add / edit patients from the dashboard. Must stay ABOVE /patients/{patient}.
+    Route::get('/patients/create', [\App\Http\Controllers\Web\PatientManageController::class, 'create'])->name('dashboard.patients.create');
+    Route::post('/patients', [\App\Http\Controllers\Web\PatientManageController::class, 'store'])->name('dashboard.patients.store');
+    Route::get('/patients/{patient}/edit', [\App\Http\Controllers\Web\PatientManageController::class, 'edit'])->name('dashboard.patients.edit');
+    Route::put('/patients/{patient}', [\App\Http\Controllers\Web\PatientManageController::class, 'update'])->name('dashboard.patients.update');
+    Route::post('/patients/{patient}/check-ins', [\App\Http\Controllers\Web\PatientManageController::class, 'storeCheckIn'])->name('dashboard.patients.checkins.store');
     // Named "dashboard.patient" so it does not clash with the API's "patients.show".
     Route::get('/patients/{patient}', [PatientPageController::class, 'show'])->name('dashboard.patient');
 

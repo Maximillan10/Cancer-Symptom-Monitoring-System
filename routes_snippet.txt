@@ -1,0 +1,6 @@
+    // Add / edit patients from the dashboard. Must stay ABOVE /patients/{patient}.
+    Route::get('/patients/create', [\App\Http\Controllers\Web\PatientManageController::class, 'create'])->name('dashboard.patients.create');
+    Route::post('/patients', [\App\Http\Controllers\Web\PatientManageController::class, 'store'])->name('dashboard.patients.store');
+    Route::get('/patients/{patient}/edit', [\App\Http\Controllers\Web\PatientManageController::class, 'edit'])->name('dashboard.patients.edit');
+    Route::put('/patients/{patient}', [\App\Http\Controllers\Web\PatientManageController::class, 'update'])->name('dashboard.patients.update');
+    Route::post('/patients/{patient}/check-ins', [\App\Http\Controllers\Web\PatientManageController::class, 'storeCheckIn'])->name('dashboard.patients.checkins.store');

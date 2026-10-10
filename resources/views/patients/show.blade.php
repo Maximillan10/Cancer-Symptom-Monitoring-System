@@ -45,6 +45,9 @@
         </div>
     </div>
 
+    {{-- Details (cancer type and stage) and the clinician check-in form --}}
+    @include('patients._details')
+
     {{-- Latest scores --}}
     <h2 class="h5">Latest scores</h2>
     <div class="row g-2 mb-4">
@@ -163,7 +166,7 @@
                         </li>
                     @empty
                         <li class="list-group-item text-body-secondary small py-4 text-center">
-                            No alerts yet. Automatic alerts are added in the alert system milestone.
+                            No alerts for this patient yet.
                         </li>
                     @endforelse
                 </ul>

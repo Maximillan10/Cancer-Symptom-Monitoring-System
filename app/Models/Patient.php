@@ -11,13 +11,16 @@ class Patient extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'assigned_clinician_id',
-        'mobile_app_user_id',
-        'name',
-        'dob',
-        'diagnosis',
-    ];
+protected $fillable = [
+    'assigned_clinician_id',
+    'name',
+    'dob',
+    'diagnosis',
+    'mobile_app_user_id',
+    'sex',
+    'cancer_type',
+    'cancer_stage',
+];
 
     protected function casts(): array
     {

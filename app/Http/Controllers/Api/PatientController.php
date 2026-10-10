@@ -37,6 +37,9 @@ class PatientController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'sex' => ['nullable', 'in:Female,Male,Other'],
+'cancer_type' => ['nullable', 'string', 'max:100'],
+'cancer_stage' => ['nullable', 'in:I,II,III,IV,Unknown'],
             'dob' => ['required', 'date', 'before:today'],
             'diagnosis' => ['nullable', 'string', 'max:255'],
             'mobile_app_user_id' => ['nullable', 'string', 'max:100', 'unique:patients,mobile_app_user_id'],
@@ -70,6 +73,9 @@ class PatientController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'sex' => ['nullable', 'in:Female,Male,Other'],
+'cancer_type' => ['nullable', 'string', 'max:100'],
+'cancer_stage' => ['nullable', 'in:I,II,III,IV,Unknown'],
             'dob' => ['sometimes', 'required', 'date', 'before:today'],
             'diagnosis' => ['sometimes', 'nullable', 'string', 'max:255'],
             'mobile_app_user_id' => [

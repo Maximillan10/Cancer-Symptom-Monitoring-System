@@ -14,6 +14,7 @@
             @if ($search !== '')
                 <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">Clear</a>
             @endif
+            <a href="{{ route('dashboard.patients.create') }}" class="btn btn-primary text-nowrap"><i class="bi bi-person-plus"></i> Add patient</a>
         </form>
     </div>
 
@@ -66,7 +67,12 @@
                             <a href="{{ route('dashboard.patient', $row['patient']) }}" class="fw-semibold text-decoration-none">{{ $row['patient']->name }}</a>
                             <div class="small text-body-secondary">{{ $row['patient']->dob->age }} years</div>
                         </td>
-                        <td>{{ $row['patient']->diagnosis ?? '-' }}</td>
+                        <td>
+                            {{ $row['patient']->cancer_type ?: ($row['patient']->diagnosis ?? '-') }}
+                            @if ($row['patient']->cancer_stage)
+                                <div class="small text-body-secondary">{{ $row['patient']->cancer_stage === 'Unknown' ? 'Stage unknown' : 'Stage '.$row['patient']->cancer_stage }}</div>
+                            @endif
+                        </td>
                         <td>
                             @if ($row['latest'])
                                 <span title="{{ $row['latest']->submitted_at->format('d M Y H:i') }}">{{ $row['latest']->submitted_at->diffForHumans() }}</span>

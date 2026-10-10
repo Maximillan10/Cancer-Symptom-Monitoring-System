@@ -54,6 +54,7 @@
                         </div>
 
                         <button type="submit" class="btn btn-brand w-100">Log in</button>
+                        <p class="text-center small mt-3">New clinician? <a href="{{ route('register') }}">Create an account</a></p>
                     </form>
                 </div>
             </div>

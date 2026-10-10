@@ -14,7 +14,10 @@
             @if ($search !== '')
                 <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">Clear</a>
             @endif
-            <a href="{{ route('dashboard.patients.create') }}" class="btn btn-primary text-nowrap"><i class="bi bi-person-plus"></i> Add patient</a>
+            <a href="{{ route('reports.index') }}" class="btn btn-outline-primary text-nowrap"><i class="bi bi-file-earmark-bar-graph"></i> Reports</a>
+            @if (\App\Support\EditorAccess::can(auth()->user()))
+                <a href="{{ route('dashboard.patients.create') }}" class="btn btn-primary text-nowrap"><i class="bi bi-person-plus"></i> Add patient</a>
+            @endif
         </form>
     </div>
 

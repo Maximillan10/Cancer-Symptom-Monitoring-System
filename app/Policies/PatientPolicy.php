@@ -4,22 +4,26 @@ namespace App\Policies;
 
 use App\Models\Patient;
 use App\Models\User;
+use App\Support\EditorAccess;
 
 /**
- * A clinician can only access patients assigned to them.
- * Admins can access every patient.
+ * Reading: a clinician can open patients assigned to them, admins can open every patient, and when the
+ * shared dashboard is on (EDITOR_EMAILS set) every signed-in clinician can open every patient.
+ * Changing: on the shared dashboard only the listed editors may change a patient.
  * Laravel discovers this policy automatically (App\Policies\PatientPolicy for App\Models\Patient).
  */
 class PatientPolicy
 {
     public function viewAny(User $user): bool
     {
-        return true; // the controller scopes the list to the clinician's own patients
+        return true; // the controller scopes the list
     }
 
     public function view(User $user, Patient $patient): bool
     {
-        return $user->isAdmin() || (int) $patient->assigned_clinician_id === (int) $user->id;
+        return $user->isAdmin()
+            || EditorAccess::sharedView()
+            || (int) $patient->assigned_clinician_id === (int) $user->id;
     }
 
     public function create(User $user): bool
@@ -29,11 +33,15 @@ class PatientPolicy
 
     public function update(User $user, Patient $patient): bool
     {
+        if (EditorAccess::sharedView()) {
+            return EditorAccess::can($user);
+        }
+
         return $this->view($user, $patient);
     }
 
     public function delete(User $user, Patient $patient): bool
     {
-        return $this->view($user, $patient);
+        return $this->update($user, $patient);
     }
 }

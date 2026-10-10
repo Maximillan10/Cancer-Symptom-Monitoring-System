@@ -1,0 +1,43 @@
+databases:
+  - name: symptom-db
+    plan: free
+    databaseName: symptom_tracker
+    user: symptom_user
+
+services:
+  - type: web
+    name: cancer-symptom-tracker
+    runtime: docker
+    plan: free
+    healthCheckPath: /login
+    envVars:
+      - key: APP_NAME
+        value: Symptom Tracker
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false          # you paste this in the Render dashboard (see steps)
+      - key: APP_URL
+        sync: false          # your https://....onrender.com address
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: symptom-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: EDITOR_EMAILS
+        value: dr.mwansa@example.com   # only this account can add or edit patients
+      - key: SEED_DEMO
+        value: "true"        # set to false after the first successful deploy

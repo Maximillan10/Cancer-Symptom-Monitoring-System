@@ -7,12 +7,14 @@
         <div>
             <h1 class="h3 mb-0">Alerts</h1>
             <p class="text-body-secondary mb-0 small">
-                Raised automatically when a check-in crosses one of your thresholds. Open alerts are listed most severe first.
+                Raised automatically when a check-in crosses a threshold. Open alerts are listed most severe first.
             </p>
         </div>
-        <a href="{{ route('thresholds.edit') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-sliders"></i> Thresholds
-        </a>
+        @if (\App\Support\EditorAccess::can(auth()->user()))
+            <a href="{{ route('thresholds.edit') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-sliders"></i> Thresholds
+            </a>
+        @endif
     </div>
 
     <ul class="nav nav-pills mb-3">
@@ -64,14 +66,14 @@
                             @endif
                         </td>
                         <td class="text-end">
-                            @unless ($alert->isResolved())
+                            @if (! $alert->isResolved() && \App\Support\EditorAccess::can(auth()->user()))
                                 <form method="POST" action="{{ route('alerts.resolve', $alert) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">
                                         <i class="bi bi-check2-circle"></i> Resolve
                                     </button>
                                 </form>
-                            @endunless
+                            @endif
                         </td>
                     </tr>
                 @empty

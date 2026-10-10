@@ -55,7 +55,7 @@ class Alert extends Model
     /** A clinician sees alerts for their own patients; an admin sees all of them. */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->isAdmin()) {
+        if ($user->isAdmin() || \App\Support\EditorAccess::sharedView()) {
             return $query;
         }
 

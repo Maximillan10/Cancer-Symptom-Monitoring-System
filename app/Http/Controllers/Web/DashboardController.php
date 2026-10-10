@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\SymptomSubmission;
+use App\Support\EditorAccess;
 use App\Support\Severity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,9 +18,12 @@ class DashboardController extends Controller
         $user = $request->user();
         $search = trim((string) $request->input('search', ''));
 
-        // A clinician sees their own patients; an admin sees everyone.
+        // Everyone sees every patient when a shared dashboard is on (EDITOR_EMAILS set) and for admins;
+        // otherwise a clinician sees their own patients.
+        $seeAll = $user->isAdmin() || EditorAccess::sharedView();
+
         $all = Patient::query()
-            ->when(! $user->isAdmin(), fn ($q) => $q->where('assigned_clinician_id', $user->id))
+            ->when(! $seeAll, fn ($q) => $q->where('assigned_clinician_id', $user->id))
             ->with('latestSubmission')
             ->withCount('unresolvedAlerts')
             ->get();

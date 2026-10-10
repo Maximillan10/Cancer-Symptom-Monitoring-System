@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\SymptomSubmission;
+use App\Http\Middleware\EditorOnly;
 use App\Models\User;
+use App\Support\EditorAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -16,8 +20,14 @@ use Illuminate\View\View;
  * (for example during a clinic visit). A check-in saved here goes through the same path as one from the
  * mobile app, so the alert engine runs on it and any alert appears straight away.
  */
-class PatientManageController extends Controller
+class PatientManageController extends Controller implements HasMiddleware
 {
+    /** Every action here changes data, so only editors (see config/symptom.php) may use them. */
+    public static function middleware(): array
+    {
+        return [new Middleware(EditorOnly::class)];
+    }
+
     public const STAGES = ['I', 'II', 'III', 'IV', 'Unknown'];
 
     public const SEXES = ['Female', 'Male', 'Other'];
@@ -104,6 +114,11 @@ class PatientManageController extends Controller
 
     private function authorizeOwner(Request $request, Patient $patient): void
     {
+        // When editors are configured, an editor may change any patient. Otherwise a clinician only their own.
+        if (EditorAccess::isRestricted()) {
+            return;
+        }
+
         abort_unless($this->isAdmin($request) || $patient->assigned_clinician_id === $request->user()->id, 403);
     }
 

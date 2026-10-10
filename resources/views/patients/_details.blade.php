@@ -7,7 +7,12 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <h2 class="h5 mb-0">Patient details</h2>
-            <a href="{{ route('dashboard.patients.edit', $patient) }}" class="btn btn-sm btn-outline-secondary">Edit details</a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('reports.patient', $patient) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-text"></i> Summary report</a>
+                @if (\App\Support\EditorAccess::can(auth()->user()))
+                    <a href="{{ route('dashboard.patients.edit', $patient) }}" class="btn btn-sm btn-outline-secondary">Edit details</a>
+                @endif
+            </div>
         </div>
         <dl class="row mb-0 mt-2 small">
             <dt class="col-sm-3">Name</dt><dd class="col-sm-9">{{ $patient->name }}</dd>
@@ -25,6 +30,7 @@
     </div>
 </div>
 
+@if (\App\Support\EditorAccess::can(auth()->user()))
 <div class="card mb-3">
     <div class="card-body">
         <h2 class="h5">Record a check-in</h2>
@@ -52,3 +58,4 @@
         </form>
     </div>
 </div>
+@endif

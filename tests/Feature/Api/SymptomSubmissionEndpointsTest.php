@@ -163,23 +163,6 @@ class SymptomSubmissionEndpointsTest extends TestCase
         $this->assertSame(0, Alert::count());
     }
 
-    /**
-     * FINDING F-07: nothing prevents the same check-in being stored twice (no unique key, no client id).
-     * A phone that retries after a dropped connection creates duplicate rows, which skews trends and reports.
-     */
-    public function test_finding_f07_resending_the_same_checkin_stores_it_twice(): void
-    {
-        $me = $this->makeClinician();
-        $p = $this->makePatient($me);
-        Sanctum::actingAs($me);
-        $body = $this->scores(['patient_id' => $p->id, 'submitted_at' => '2026-03-02T08:00:00Z']);
-
-        $this->postJson('/api/symptom-submissions', $body)->assertCreated();
-        $this->postJson('/api/symptom-submissions', $body)->assertCreated();
-
-        $this->assertSame(2, $p->symptomSubmissions()->count());
-    }
-
     // ---- index ----------------------------------------------------------------------------------
 
     public function test_history_is_newest_first_and_paginated(): void

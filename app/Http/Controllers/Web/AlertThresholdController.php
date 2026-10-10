@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\AlertThreshold;
 use App\Models\SymptomSubmission;
+use App\Services\AlertRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,8 @@ class AlertThresholdController extends Controller
     {
         $request->validate([
             'absolute' => ['array'],
-            'absolute.*' => ['nullable', 'integer', 'between:1,10'],
+            // Capped at 9: a limit of 10 would silence a critical score of 9. Leave the box blank to switch the rule off.
+            'absolute.*' => ['nullable', 'integer', 'between:1,'.AlertRules::MAX_ABSOLUTE_LIMIT],
             'rise' => ['array'],
             'rise.*' => ['nullable', 'integer', 'between:1,10'],
             'window' => ['array'],

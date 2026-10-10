@@ -1,104 +1,141 @@
-# Test Report: Cancer Symptom Tracker: Clinician Alert Dashboard
+# Test Report: Cancer Symptom Tracker, Clinician Alert Dashboard
 
-Course CSC 4004 · Milestone: System Testing & Validation · Author: Maximillan Soko (2021494314)
+University of Zambia, CSC 4004 | Maximillan Soko (2021494314) | Supervisor: Mr. Mofya Phiri
+Milestone: System Testing & Validation
 
-> Sections marked **[FILL]** need results from your own run (see `docs/TESTING.md`). Everything else is ready to use.
+**Read this first.** This report separates what was *executed* from what was *written but not yet run*. The environment where
+the tests were prepared could run plain PHP but could not install Laravel, so the database and HTTP tests have to be run on
+your machine (Section 5). Fill in the "Your run" columns before you submit. Do not submit this report with the blanks empty.
 
-## 1. Purpose and scope
+## 1. Summary against the proposal's evaluation criteria
 
-This report verifies that the dashboard's alert logic, access control and API performance meet the measurable criteria of the approved proposal (§4.4). Scope: `AlertRules`, `AlertEngine`, the check-in observer, the `alerts:scan` command, clinician/alert/patient access control, and API response time. Out of scope (per proposal): the mobile app, real patient data, hospital integration.
-
-## 2. Test environment [FILL]
-
-| Item | Value |
-|---|---|
-| OS / PHP / Laravel | [FILL] |
-| Database for tests | [FILL: SQLite in-memory or PostgreSQL `cancer_tracker_test`] |
-| PHPUnit version | [FILL: from `php artisan test` header] |
-| Date of run | [FILL] |
-
-## 3. Test strategy
-
-| Level | What | Where |
-|---|---|---|
-| Unit | Rule logic with no database | `tests/Unit/AlertRulesBoundaryTest.php` |
-| Integration | Engine + observer + database + scan command | `tests/Feature/AlertEngineBehaviourTest.php` |
-| Scenario validation | 25 simulated patients, expected alerts worked out by hand from the clinical rules before running | `tests/Feature/AlertScenarioValidationTest.php`, `tests/Support/AlertScenarios.php` |
-| Security | Authentication and per-clinician isolation | `tests/Feature/AccessControlTest.php` |
-| API / endpoint | Auth, patient and symptom-submission endpoints: validation, scoping, error codes, end to end into the alert engine | `tests/Feature/Api/*` |
-| Performance | 10 concurrent users against the API | `scripts/load-test.php` |
-
-Simulated data only; no real patient data was used (proposal §3.5).
-
-The 25 scenarios cover the five trajectory types of the proposal (stable, gradual worsening, acute spike, improving, fluctuating) plus boundary cases for each rule, configured thresholds, resolution, multi-symptom and critical-score cases. Expected results use the default limits (absolute ≥ 7, rise ≥ 3 within 3 days) and the one-open-alert-per-symptom rule.
-
-## 4. Scenario results [FILL: paste `storage/app/validation/scenario-results.md`]
-| ID | Trajectory | Scenario | Expected alerts | Matched | Unexpected | Result |
-|---|---|---|---|---|---|---|
-| S01 | stable | Low, steady pain (2-3) | 0 | 0 | 0 | PASS |
-| S02 | stable | Constant pain 6, just below the limit of 7 | 0 | 0 | 0 | PASS |
-| S03 | stable | Fatigue wobbling 3-5 (max rise 2) | 0 | 0 | 0 | PASS |
-| S04 | stable | Pain 4,4,6: rise of 2 and score below 7 | 0 | 0 | 0 | PASS |
-| S05 | stable | Fatigue 2,2,4: rise of 2 is below the rise limit of 3 | 0 | 0 | 0 | PASS |
-| S06 | stable | Rise of 3 but over 4 days (outside the 3-day window) | 0 | 0 | 0 | PASS |
-| S07 | stable | Pain 4,4,5 with default limits | 0 | 0 | 0 | PASS |
-| S08 | custom_thresholds | Clinician lowers pain limit to 5; pain 4,4,5 | 1 | 1 | 0 | PASS |
-| S09 | custom_thresholds | Clinician switches the pain absolute rule off; first check-in pain 8 | 0 | 0 | 0 | PASS |
-| S10 | absolute | Pain jumps to exactly 7 | 1 | 1 | 0 | PASS |
-| S11 | absolute | Breathlessness reaches 9 (critical) | 1 | 1 | 0 | PASS |
-| S12 | absolute | Very first check-in anxiety 10 (no history) | 1 | 1 | 0 | PASS |
-| S13 | absolute | Very first check-in pain 7 | 1 | 1 | 0 | PASS |
-| S14 | absolute | Sustained pain 7,7,8,8,9: one alert that escalates | 1 | 1 | 0 | PASS |
-| S15 | rise | Fatigue 2,2,5: rise of exactly 3 | 1 | 1 | 0 | PASS |
-| S16 | rise | Nausea 0,0,3: a baseline of 0 is a real reading | 1 | 1 | 0 | PASS |
-| S17 | rise | Steady climb of 1 point a day (nausea 1..6) | 1 | 1 | 0 | PASS |
-| S18 | rise | Two symptoms rise together (fatigue and anxiety 2,2,5) | 2 | 2 | 0 | PASS |
-| S19 | gradual_worsening | Pain creeps up one point every two days (2..8) | 1 | 1 | 0 | PASS |
-| S20 | acute_spike | Sudden crisis: pain 10 and breathlessness 9 on day 3 | 2 | 2 | 0 | PASS |
-| S21 | improving | Starts high and improves (pain 8 down to 2); alert stays open | 1 | 1 | 0 | PASS |
-| S22 | fluctuating | Anxiety swings 3 and 7: one alert, no spam | 1 | 1 | 0 | PASS |
-| S23 | multi_symptom | Day 2: pain 8, nausea 7, fatigue 3 (+2 only) | 2 | 2 | 0 | PASS |
-| S24 | resolution | Alert resolved, then the same breach returns: a new alert | 2 | 2 | 0 | PASS |
-| S25 | critical_all | All six symptoms at 9 on the first check-in | 6 | 6 | 0 | PASS |
-
-Scenario accuracy **100.0%** (25/25) · alert recall **100.0%** (26/26) · unexpected alerts **0** · critical events **11**, missed **0**
-
-Pre-run check by the author of the tests: the same scenarios were replayed through an in-memory port of the engine that uses the real `AlertRules` code. All 25 matched (26 of 26 expected alerts, 0 unexpected, 11 critical events, 0 missed), which confirms the expectations are consistent with the rules. The official result is the run against the real application in your environment.
-
-## 5. Acceptance criteria (proposal §4.4)
-
-| Criterion | Target | Method | Result |
+| Criterion (proposal) | Target | Result | Status |
 |---|---|---|---|
-| Alert detection accuracy | ≥ 95% of expected alerts; no false negatives for critical events | `AlertScenarioValidationTest` | [FILL] |
-| Simulated patient coverage | ≥ 20 patients, ≥ 4 trajectory types | Scenario count and categories | 25 patients; 5 trajectory types |
-| API response time | Average ≤ 300 ms at 10 concurrent users | `scripts/load-test.php` | [FILL] |
-| API test coverage | ≥ 80% of API endpoints | `php artisan test --coverage`; all 11 routes in `routes/api.php` have endpoint tests | [FILL: coverage %] |
-| Report completeness | 100% reports contain chart, alert history, summary | Pending report-generation code | [PENDING] |
-| Dashboard usability | SUS ≥ 70 with 3–5 evaluators | Questionnaire | [FILL] (manual) |
+| Simulated patient scenarios | at least 50 | 55 scenarios in 9 categories | Met |
+| Alert detection accuracy on predefined scenarios | at least 85% | 55 of 55 scenarios (100%); 330 of 330 symptom decisions | Met (executed) |
+| Same scenarios through the real engine and database | n/a | `ScenarioEngineTest`: 55 of 55 passed (student's run) | Met (executed) |
+| API response time under simulated load | 500 ms or less | Mock-server check of the script only | **Run it yourself** (Section 5) |
+| Usability (SUS) | 70 or more | Not measured | Needs real testers (Section 7) |
+| Report generation completeness | 95% or more | Not measured | Report feature (proposal Phase 8) is not built yet |
 
-**Source of the targets: confirm with your supervisor.** The numeric targets above (95% accuracy, ≤ 300 ms at 10 users, SUS ≥ 70, ≥ 80% coverage) appear in `Cancer_Symptom_Tracker_Proposal_FINAL.docx` (§4.4, 26-week plan). The 22-week proposal text dated 24 March 2026 contains no numeric evaluation table, and an earlier working note quoted 85% accuracy. The test gate uses 95% (one constant, `ACCURACY_TARGET` in `AlertScenarioValidationTest`). Use whichever version your supervisor approved and say so in the report.
+## 2. How the alert accuracy was measured
 
-## 6. Findings and recommendations
+Each scenario is a short story: one patient's check-ins plus the clinician's rules. The expected alerts were written **by hand,
+from the written rules, before running anything** (which symptom alerts, at what final score, on which check-in). A scenario passes only if
+every alert matches exactly, so a scenario with a wrong score or the wrong day counts as a failure.
 
-Found by reading the code and confirmed or documented by the tests listed. None stops the system working; F-02, F-03 and F-07 are the most worth fixing before submission.
+What this proves: the code does what the written rules say. What it does **not** prove: that the rules are clinically right.
+Only a clinician or real data can show that. The expectations and the code were written by the same person (me, with you),
+so a shared misunderstanding of a rule would not be caught.
 
-| ID | Severity | Finding | Evidence | Recommendation |
+Categories (IDs in `tests/Scenarios/ScenarioLibrary.php`): Stable (6), Boundary (6), Rate of change (10), Deterioration (5),
+Alert fatigue (8), Multiple symptoms (5), Custom thresholds (8), Offline sync (3), Realistic (4).
+
+Result: **55 / 55 passed.** Run it: `php tests/Scenarios/run.php`
+
+### Did the tests actually test anything? (mutation check)
+All 54 first-draft scenarios passed on the first run, which can mean good tests or tests that cannot fail. So I broke the rules on
+purpose, one change at a time, and checked that the tests noticed:
+
+| Deliberate fault | Scenarios that failed | Caught by unit tests |
+|---|---|---|
+| Absolute rule `>=` changed to `>` | 13 | yes |
+| Rise rule `>=` changed to `>` | 8 | yes |
+| Baseline uses highest earlier score, not lowest | 4 | yes |
+| Window edge made exclusive | 5 | yes |
+| A score of 0 treated as "no reading" | 1 (after adding S55) | yes |
+| Open alert escalated on an equal score | 0 (no visible effect on scenario output) | yes |
+| Critical band moved from 9 to 10 | 0 (priority is not scenario output) | yes |
+
+The zero-baseline fault initially **survived**: no scenario depended on it. That was a real gap, so scenario S55 was added.
+The last two are covered by the unit tests rather than the scenarios, which is why both layers exist.
+
+## 3. Findings: what the rules do and do not catch
+
+These are limitations of the current design, found by testing. They are not hidden bugs; they are the behaviour the scenarios
+(S03, S17, S46, S49) document on purpose. Report them as such.
+
+1. **Slow creep is missed.** A score rising about 1 point every 3 days never rises 3 points inside 3 days, and never reaches 7 until late.
+   A 7-day window (S45) catches it, but see Section 4 for the cost.
+2. **Steady moderate symptoms never alert.** Pain at 5 or 6 for weeks is below every limit (S03, S06, S52).
+3. **A severe old reading synced late is not alerted** (S49). The engine only evaluates the patient's newest check-in, so a phone
+   that uploads old offline entries does not raise alerts about the past. Intentional, but a clinician should know it.
+4. **A single check-in can raise six alerts at once** (S37). Each symptom has its own alert.
+5. **The rise rule can fire on noise**, for example 2 to 5 overnight (S15, S38).
+6. **Appetite is treated as "higher is worse"** like the other symptoms. If the mobile app scores appetite the other way round, that rule is inverted. Confirm with Part A.
+7. **Missed check-ins delay alerts.** In the simulated cohort, the only true events not detected in time were patients who stopped reporting for two or three days while their symptoms jumped (seeds 1 and 3; none missed in the default seed). The alert came as soon as the next check-in arrived, one to two days late. No rule can alert on data it has not received.
+
+## 4. Simulated cohort and threshold tuning
+
+200 simulated patients over 28 days (seed 20260105, 69 of them with a true event; 15% of days randomly missing, deterministic). A hidden "true" symptom level exists
+for each patient, and the rules only see a noisy, incomplete version. **Ground truth is defined from the hidden level, not from the rules**:
+an *event* is the true level reaching 8; *detected* means an alert (new or escalated) on or before the event day + 1; a *false alert* is a
+new alert for a patient with no event, or more than 7 days before one. Run: `php tests/Scenarios/cohort.php --markdown --detail`
+
+| Setting | Sensitivity | Mean lead (days) | Warned early | False alerts / 100 patient-weeks |
 |---|---|---|---|---|
-| F-01 | Low (design) | Slow deterioration is only detected when the score reaches the absolute limit. The default rise rule needs +3 within 3 days, so a patient whose pain climbs 1 point every 2 days is not flagged until it reaches 7. | Scenario S19 (first alert on day 10) | Add a longer-window rise rule (e.g. +3 within 7 days) or document as a limitation of rule-based logic |
-| F-02 | Medium | Once a clinician saves any threshold, symptoms with no saved rule get no alerts at all (defaults are not applied per symptom). | `test_finding_f02_…` | In `rulesFor()`, fall back to default rules for any symptom that has no saved rows, while still honouring saved inactive rules |
-| F-03 | Medium | A configured limit above 9 (or rules switched off) lets a critical score (9–10) pass without an alert, which conflicts with "no false negatives for critical events". | `test_finding_f03_…` | Always alert on scores ≥ 9, or restrict the settings form (limit ≤ 9) and warn when switching a symptom off |
-| F-04 | Low | An escalated alert is updated in place: `triggered_at` stays at the first breach and escalation is not reported as new, so a warning that becomes critical is easy to miss and `alerts:scan` does not count it. | `test_worse_score_escalates_the_open_alert_in_place` | Show "escalated" on the alert (e.g. `escalated_at` or severity history) and count escalations in the scan summary |
-| F-05 | Low/Medium | Evaluation depends on arrival order: if a newer check-in is already stored, an older one that syncs late is ignored, even if it was a critical score. | `test_finding_f05_…` | Always apply the absolute/critical rule to late check-ins (within a sensible age), skip only the rise rule |
-| F-06 | Low | The patient search uses `ILIKE`, which exists only in PostgreSQL, so the endpoint errors on SQLite/MySQL and cannot be tested on the fast in-memory database. | `test_index_search_is_case_insensitive_and_scoped` (skipped off PostgreSQL) | Use `whereRaw('LOWER(name) LIKE ?', …)` for portability, or state PostgreSQL as a hard requirement |
-| F-07 | Medium | The mobile sync endpoint has no duplicate protection: re-sending the same check-in (normal after a dropped connection) stores it twice, skewing trends and reports. It also accepts only one check-in per request. | `test_finding_f07_resending_the_same_checkin_stores_it_twice` | Make the endpoint idempotent on (patient, submitted_at) or a client-generated id; consider a batch endpoint for offline queues |
+| **Default (7, or +3 in 3 days)** | 100.0% | 1.8 | 36 of 69 | 9.9 |
+| Absolute only (7) | 100.0% | 1.2 | 31 of 69 | 8.6 |
+| Rise only (+3 in 3 days) | 82.6% | 1.8 | 30 of 69 | 5.6 |
+| Rise +4 in 3 days | 100.0% | 1.3 | 31 of 69 | 9.0 |
+| Rise +3 in 2 days | 100.0% | 1.7 | 34 of 69 | 9.6 |
+| Rise +2 in 3 days | 100.0% | 3.2 | 47 of 69 | **36.0** |
+| Absolute 6 | 100.0% | 2.1 | 40 of 69 | 13.1 |
+| Absolute 8 | 98.6% | 1.5 | 32 of 69 | 6.5 |
+| Default plus 7-day creep rule (+3 in 7 days) | 100.0% | 2.1 | 39 of 69 | 10.4 |
 
-## 7. Limitations
+What the table supports (the same pattern appeared in three other seeds, 1, 2 and 3, where default sensitivity was 98.5%, 100% and 98.4%):
+- The default rules detected nearly every simulated event, with about 1.8 days of warning on average. The rise rule gives the early warning: absolute-only warned 31 of 69 early, the default 36 of 69.
+- Making the rise rule more sensitive (+2) buys about 1.4 more days of warning but costs about 3.6 times as many false alerts (36.0 vs 9.9 per 100 patient-weeks). That is an alert-fatigue cost a clinic would feel.
+- The extra 7-day creep rule added little in this cohort, because the creeping patients still crossed 7 and were caught by the absolute rule.
+- The "improving" patients start at 5 to 8, so a few begin with a true level that already rounds to 8 on day 0. They count as events, and the rules detect them on the first check-in. That is a quirk of how I defined an event, not a clinical claim.
+- Treat all of this as a comparison of settings **inside my simulation**. The archetypes (stable, moderate, improving, episodic, gradual, sudden, slow creep, noisy) and their numbers are my assumptions, not clinical data. It is not evidence of real-world accuracy.
 
-- Tests use simulated trajectories and hand-written expectations; they validate rule behaviour, not clinical effectiveness.
-- Load figures from `php artisan serve` underestimate a production web server.
-- SUS usability testing and clinician review are manual and not automated here.
-- Alert delivery is dashboard-only; there is no email/SMS channel to test.
+Method note: my first scoring counted only *new* alerts as detections, which made the default look worse than absolute-only. That was wrong; adding a rule cannot lower detection. An early alert stays open, so the later breach shows up as an *escalation* of it, and a clinician does see that. Escalations now count as detections. A unit test (`test_adding_a_rule_never_lowers_detection`) guards this.
 
-## 8. Conclusion [FILL after your run]
+## 5. What was executed and what you must run
 
-State whether each criterion in section 5 was met, list any failed tests with their fix, and cite the findings above as recommendations for future work.
+| Test | Count | Executed here? | Your run |
+|---|---|---|---|
+| Scenario runner (`php tests/Scenarios/run.php`) | 55 scenarios | **Yes**, 55/55 | |
+| Unit tests: AlertRulesTest, AlertDecisionTest, ScenarioValidationTest | 71 cases | **Yes**, with a small stand-in for PHPUnit, not real PHPUnit | |
+| Load script (`tests/load/load-test.php`) | n/a | Checked against a **mock** server: pass, fail (slow) and bad-login paths behave correctly. **Never run against your app.** | |
+| Feature tests: AuthApiTest, PatientApiTest, SymptomSubmissionApiTest, WebDashboardTest | about 75 | **Yes (student's run):** all passed | |
+| ScenarioEngineTest (same 55 scenarios through the real engine and DB) | 55 | **Yes (student's run):** 55/55 | |
+| PerformanceTest (median response time, 50 patients x 30 days) | 1 | **Yes (student's run):** passed, slowest median 184.5 ms | |
+
+Student's full run (PHP 8.2, `php artisan test --exclude-group=performance`): 307 tests passed, 3 deprecation warnings (bug 4, now fixed), 0 failures, 754 assertions. The earlier suite in the project (149 tests) is included in that count.
+
+The Laravel starter tests for registration, password reset, email verification and profile pages were deleted, because this app has no such routes. The remaining starter login test was changed to expect a redirect to `/login`.
+
+Student's full run with the performance test included: 311 passed, 850 assertions, 0 failures. Median response times in that test (50 patients x 30 days of check-ins, in the test environment, no network):
+
+| Endpoint | Median |
+|---|---|
+| GET /api/patients | 68.4 ms |
+| GET /api/patients/{id}/symptom-submissions | 53.1 ms |
+| POST /api/symptom-submissions | 24.5 ms |
+| GET /dashboard | 184.5 ms |
+| GET /patients/{id} | 55.0 ms |
+| GET /alerts | 17.4 ms |
+
+All are under the 500 ms target. This is a single-user smoke test, not a load test, so it does not yet show behaviour under many simultaneous users. The HTTP load test (TESTING.md, section 4) is still to be run.
+
+## 6. Bugs found and fixed
+From the work executed so far:
+
+| # | Found by | Problem | Fixed |
+|---|---|---|---|
+| 1 | Mutation check | No test covered a rise measured from a baseline of 0 | Scenario S55 added |
+| 2 | Cohort comparison | Scoring ignored escalations, understating detection | Metric corrected, unit test added |
+| 3 | Lint | `ScenarioLibrary` had two methods named `all()` | Builder renamed `allSix()` |
+| 5 | Student's suite, finding f07 | Re-sending the same check-in stored it twice (a phone retrying a sync would create duplicate readings and could repeat alerts) | Same patient + same `submitted_at` + same scores now returns the saved check-in (HTTP 200); same time with different scores returns 409. Tests: `CheckInIdempotencyTest`. Not protected against two requests arriving at the same instant (no database unique index) |
+| 6 | Student's suite, finding f03 | A saved limit of 10 let a critical score of 9 pass without an alert | Absolute limit now capped at 9 (form and server-side check); a migration lowers any saved limit of 10 to 9. A clinician can still switch a rule off with a blank box. Scenario S42 changed from limit 10 to limit 9. Tests: `ThresholdLimitTest` |
+| 4 | Student's `php artisan test` (PHP 8.2) | The cohort random-number generator overflowed PHP's integer range (3 deprecation warnings, a 120 s test). The corrupted draws also made the first cohort numbers unreliable | Multiplication rewritten to stay in range and checked against an independent reference implementation; every cohort figure in this report was regenerated |
+
+## 7. Not done, and why
+- **Real load figures.** The single-user performance test passed (Section 5) but the many-users HTTP load test has not been run. It needs your machine with PostgreSQL. Run the load script (see TESTING.md) and paste the table here.
+- **Security testing.** The tests cover the controls that exist: tokens required, wrong password rejected, password never returned or stored in plain text, role cannot be chosen at registration, clinicians cannot read, edit, delete or submit for another clinician's patients, input validation. A penetration test, rate-limit testing and dependency audit were **not** done. Say "access control and authentication tests passed", not "the system is secure".
+- **Usability (SUS).** Needs at least a handful of real people (e.g. classmates acting as clinicians) completing tasks and filling in the 10-question SUS form. I can prepare the task list and form if you want.
+- **Report generation (95% completeness).** The patient summary report and PDF export from the proposal (Phase 8) are not built, so this criterion cannot be measured yet.
+- **Patient search under PostgreSQL.** The search uses `ilike`, which only exists in PostgreSQL, so the automated tests (sqlite by default) do not cover it. Test it manually in Postman.

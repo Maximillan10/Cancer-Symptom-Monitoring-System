@@ -31,7 +31,12 @@ class PatientPageController extends Controller
 
         $latest = $patient->symptomSubmissions()->latest('submitted_at')->first();
         $recent = $patient->symptomSubmissions()->latest('submitted_at')->limit(10)->get();
-        $alerts = $patient->alerts()->with('resolver:id,name')->orderByDesc('triggered_at')->limit(10)->get();
+        // Open alerts first, then the most recent resolved ones.
+        $alerts = $patient->alerts()->with('resolver:id,name')
+            ->orderByRaw('resolved_at is not null')
+            ->orderByDesc('triggered_at')
+            ->limit(10)
+            ->get();
         $patient->load('clinician:id,name');
 
         // Chart.js line chart: one line per symptom. If a day has several check-ins, show the time too.

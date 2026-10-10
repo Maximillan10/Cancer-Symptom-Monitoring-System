@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\SymptomSubmission;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -36,6 +37,8 @@ class SymptomSubmissionController extends Controller
      * POST /api/symptom-submissions
      * Data sync endpoint for the companion mobile app (Part A).
      * The patient is identified by patient_id OR mobile_app_user_id.
+     * Sending the same check-in again (same patient, same submitted_at, same scores) returns the saved one with 200
+     * instead of creating a duplicate; the same time with different scores is a 409.
      */
     public function store(Request $request): JsonResponse
     {
@@ -67,6 +70,25 @@ class SymptomSubmissionController extends Controller
             : Patient::where('mobile_app_user_id', $data['mobile_app_user_id'])->firstOrFail();
 
         Gate::authorize('view', $patient);
+
+        // Retries are safe: a phone that did not see our reply will send the same check-in again. When the app gives
+        // a submitted_at, a check-in from the same patient at the same moment is the same check-in, so it is not stored twice.
+        if (! empty($data['submitted_at'])) {
+            $at = Carbon::parse($data['submitted_at'])->setMicrosecond(0);
+            $existing = $patient->symptomSubmissions()->where('submitted_at', $at)->first();
+
+            if ($existing) {
+                $sameScores = collect(SymptomSubmission::SYMPTOM_TYPES)
+                    ->every(fn ($type) => ($data[$type] ?? null) === $existing->{$type});
+
+                return $sameScores
+                    ? response()->json($existing, 200)
+                    : response()->json([
+                        'message' => 'A different check-in was already saved for this patient at that time.',
+                        'existing' => $existing,
+                    ], 409);
+            }
+        }
 
         $submission = $patient->symptomSubmissions()->create([
             'submitted_at' => $data['submitted_at'] ?? now(),

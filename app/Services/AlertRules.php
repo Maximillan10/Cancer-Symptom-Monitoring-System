@@ -13,6 +13,14 @@ final class AlertRules
     public const CRITICAL_FROM = 9;
     public const WARNING_FROM = 7;
 
+    /** System defaults, used until a clinician saves their own thresholds. */
+    public const DEFAULT_ABSOLUTE = 7;   // alert when a score reaches 7
+    public const DEFAULT_RISE = 3;       // alert when a score rises by 3 ...
+    public const DEFAULT_WINDOW = 3;     // ... within 3 days
+
+    /** Highest absolute limit a clinician may save. A limit of 10 would let a critical score of 9 pass without an alert. */
+    public const MAX_ABSOLUTE_LIMIT = self::CRITICAL_FROM;
+
     public const CREATE = 'create';
     public const ESCALATE = 'escalate';
     public const SKIP = 'skip';
@@ -68,6 +76,67 @@ final class AlertRules
         }
 
         return $newSeverity > $openSeverity ? self::ESCALATE : self::SKIP;
+    }
+
+    /**
+     * Do the clinician's rules fire for one symptom score?
+     *
+     * @param  array<int, array{threshold_value:int, window_days:?int}>  $rules    active rules for this symptom
+     *                                         (window_days null = absolute rule, set = rise within that many days)
+     * @param  int  $at       when the score was measured (unix seconds)
+     * @param  array<int, array{at:int, score:?int}>  $history  the patient's OTHER readings of this symptom, any order
+     * @return string|null    the reasons joined by "; ", or null when no rule fires
+     */
+    public static function assess(array $rules, int $score, int $at, array $history): ?string
+    {
+        $reasons = [];
+
+        foreach ($rules as $rule) {
+            $limit = (int) $rule['threshold_value'];
+            $days = $rule['window_days'] ?? null;
+
+            if ($days === null) {
+                if (self::absoluteHit($score, $limit)) {
+                    $reasons[] = self::absoluteReason($score, $limit);
+                }
+
+                continue;
+            }
+
+            $from = $at - ((int) $days * 86400);
+            $earlier = [];
+
+            foreach ($history as $reading) {
+                if ($reading['score'] !== null && $reading['at'] >= $from && $reading['at'] <= $at) {
+                    $earlier[] = (int) $reading['score'];
+                }
+            }
+
+            $baseline = self::baseline($earlier);
+
+            if (self::riseHit($score, $baseline, $limit)) {
+                $reasons[] = self::riseReason($score, (int) $baseline, (int) $days, $limit);
+            }
+        }
+
+        return $reasons === [] ? null : implode('; ', $reasons);
+    }
+
+    /**
+     * The full decision for one symptom of one check-in: did a rule fire, and if so create, escalate or skip?
+     *
+     * @param  int|null  $openSeverity  score of the patient's open alert for this symptom, or null if none is open
+     * @return array{action:string, reason:string}|null  null when no rule fired
+     */
+    public static function decide(array $rules, int $score, int $at, array $history, ?int $openSeverity): ?array
+    {
+        $reason = self::assess($rules, $score, $at, $history);
+
+        if ($reason === null) {
+            return null;
+        }
+
+        return ['action' => self::action($openSeverity, $score), 'reason' => $reason];
     }
 
     public static function absoluteReason(int $score, int $limit): string

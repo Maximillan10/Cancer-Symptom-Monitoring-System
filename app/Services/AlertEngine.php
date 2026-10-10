@@ -50,23 +50,34 @@ class AlertEngine
                 continue;
             }
 
-            $reasons = [];
+            $rules = $rulesByType[$type]
+                ->map(fn (AlertThreshold $rule) => [
+                    'threshold_value' => (int) $rule->threshold_value,
+                    'window_days' => $rule->window_days,
+                ])
+                ->values()
+                ->all();
 
-            foreach ($rulesByType[$type] as $rule) {
-                $reason = $rule->isRateOfChange()
-                    ? $this->riseReasonFor($submission, $type, (int) $score, $rule)
-                    : $this->absoluteReasonFor((int) $score, $rule);
+            $open = Alert::open()
+                ->where('patient_id', $patient->id)
+                ->where('symptom_type', $type)
+                ->latest('triggered_at')
+                ->first();
 
-                if ($reason !== null) {
-                    $reasons[] = $reason;
-                }
-            }
+            // All the rule logic is in AlertRules::decide(), which has no database access.
+            $decision = AlertRules::decide(
+                $rules,
+                (int) $score,
+                $submission->submitted_at->getTimestamp(),
+                $this->historyFor($submission, $type, $rules),
+                $open?->severity
+            );
 
-            if ($reasons === []) {
+            if ($decision === null) {
                 continue;
             }
 
-            $alert = $this->raise($patient, $submission, $type, (int) $score, implode('; ', $reasons));
+            $alert = $this->apply($patient, $submission, $type, (int) $score, $decision, $open);
 
             if ($alert) {
                 $created->push($alert);
@@ -103,49 +114,36 @@ class AlertEngine
         return $rules->where('is_active', true)->values();
     }
 
-    private function absoluteReasonFor(int $score, AlertThreshold $rule): ?string
+    /**
+     * The patient's other readings of this symptom inside the longest rise window, for the rise rule.
+     * Returns nothing when no rise rule is active, so no query is made.
+     *
+     * @return array<int, array{at:int, score:int}>
+     */
+    private function historyFor(SymptomSubmission $submission, string $type, array $rules): array
     {
-        $limit = (int) $rule->threshold_value;
+        $windows = array_filter(array_column($rules, 'window_days'), fn ($days) => $days !== null);
 
-        return AlertRules::absoluteHit($score, $limit)
-            ? AlertRules::absoluteReason($score, $limit)
-            : null;
-    }
+        if ($windows === []) {
+            return [];
+        }
 
-    private function riseReasonFor(SymptomSubmission $submission, string $type, int $score, AlertThreshold $rule): ?string
-    {
-        $days = (int) $rule->window_days;
-        $limit = (int) $rule->threshold_value;
-
-        $earlier = SymptomSubmission::where('patient_id', $submission->patient_id)
+        return SymptomSubmission::where('patient_id', $submission->patient_id)
             ->where('id', '!=', $submission->id)
-            ->where('submitted_at', '>=', $submission->submitted_at->copy()->subDays($days))
+            ->where('submitted_at', '>=', $submission->submitted_at->copy()->subDays((int) max($windows)))
             ->where('submitted_at', '<=', $submission->submitted_at)
             ->whereNotNull($type)
-            ->pluck($type)
+            ->get(['submitted_at', $type])
+            ->map(fn (SymptomSubmission $s) => ['at' => $s->submitted_at->getTimestamp(), 'score' => (int) $s->{$type}])
             ->all();
-
-        $baseline = AlertRules::baseline($earlier);
-
-        return AlertRules::riseHit($score, $baseline, $limit)
-            ? AlertRules::riseReason($score, $baseline, $days, $limit)
-            : null;
     }
 
-    /** Create the alert, escalate the open one, or do nothing, depending on AlertRules::action(). */
-    private function raise(Patient $patient, SymptomSubmission $submission, string $type, int $score, string $reason): ?Alert
+    /** Carry out the decision: create the alert, escalate the open one, or do nothing. */
+    private function apply(Patient $patient, SymptomSubmission $submission, string $type, int $score, array $decision, ?Alert $open): ?Alert
     {
-        $reason = Str::limit($reason, 250, '');
+        $reason = Str::limit($decision['reason'], 250, '');
 
-        $open = Alert::open()
-            ->where('patient_id', $patient->id)
-            ->where('symptom_type', $type)
-            ->latest('triggered_at')
-            ->first();
-
-        $action = AlertRules::action($open?->severity, $score);
-
-        if ($action === AlertRules::CREATE) {
+        if ($decision['action'] === AlertRules::CREATE) {
             return Alert::create([
                 'patient_id' => $patient->id,
                 'triggered_at' => $submission->submitted_at,
@@ -155,7 +153,7 @@ class AlertEngine
             ]);
         }
 
-        if ($action === AlertRules::ESCALATE) {
+        if ($decision['action'] === AlertRules::ESCALATE) {
             // Keep one open alert per patient and symptom: raise its score instead of adding a duplicate.
             $open->update([
                 'severity' => $score,

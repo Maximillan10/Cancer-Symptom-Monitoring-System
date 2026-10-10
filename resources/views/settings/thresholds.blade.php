@@ -37,7 +37,7 @@
                         <tr>
                             <th scope="row" class="text-capitalize">{{ $type }}</th>
                             <td style="max-width: 160px;">
-                                <input type="number" min="1" max="10" inputmode="numeric" placeholder="Off"
+                                <input type="number" min="1" max="9" inputmode="numeric" placeholder="Off"
                                        name="absolute[{{ $type }}]" value="{{ old('absolute.'.$type, $absolute[$type]) }}"
                                        class="form-control form-control-sm @error('absolute.'.$type) is-invalid @enderror"
                                        aria-label="{{ ucfirst($type) }}: alert at this score or higher">

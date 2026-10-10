@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AlertRules;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,9 +13,9 @@ class AlertThreshold extends Model
     use HasFactory;
 
     /** System defaults, used until a clinician saves their own thresholds. */
-    public const DEFAULT_ABSOLUTE = 7;   // alert when a score reaches 7
-    public const DEFAULT_RISE = 3;       // alert when a score rises by 3 ...
-    public const DEFAULT_WINDOW = 3;     // ... within 3 days
+    public const DEFAULT_ABSOLUTE = AlertRules::DEFAULT_ABSOLUTE;
+    public const DEFAULT_RISE = AlertRules::DEFAULT_RISE;
+    public const DEFAULT_WINDOW = AlertRules::DEFAULT_WINDOW;
 
     protected $fillable = [
         'clinician_id',

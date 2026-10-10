@@ -114,6 +114,6 @@
 
     <p class="small text-body-secondary mt-3 mb-0">
         Score key: Pa pain, Fa fatigue, Na nausea, An anxiety, Ap appetite, Dy dyspnea. Higher is more severe.
-        Colours: green 0-3, amber 4-6, red 7-10. Configurable alert thresholds arrive with the alert system.
+        Colours: green 0-3, amber 4-6, red 7-10.
     </p>
 @endsection

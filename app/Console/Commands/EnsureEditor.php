@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * Makes sure the editor account (the first address in EDITOR_EMAILS) exists.
- * Safe to run on every start: it creates the account only when it is missing, and it only
- * changes an existing password when EDITOR_PASSWORD is set.
+ * Safe to run on every start. The account is created only when EDITOR_PASSWORD is set: there is no
+ * built-in default password. An existing account's password is changed only when EDITOR_PASSWORD is set.
  */
 class EnsureEditor extends Command
 {
@@ -31,11 +31,18 @@ class EnsureEditor extends Command
         $user = User::where('email', $email)->first();
 
         if (! $user) {
+            if (! $password) {
+                // Do not invent a password. Starting the site must still work, so this is a warning, not an error.
+                $this->warn("EDITOR_PASSWORD is not set, so the editor account {$email} was NOT created. Set EDITOR_PASSWORD and start again.");
+
+                return self::SUCCESS;
+            }
+
             $user = new User();
             $user->forceFill([
                 'name' => env('EDITOR_NAME', 'Dr Mwansa'),
                 'email' => $email,
-                'password' => Hash::make($password ?: 'password'),
+                'password' => Hash::make($password),
                 'role' => 'clinician',
             ])->save();
             $this->info("Created editor account {$email}.");

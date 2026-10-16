@@ -56,3 +56,10 @@ if (in_array('--detail', $argv, true)) {
         printf("  %-12s %3d / %3d / %3d\n", $type, $t['detected'], $t['event'], $t['patients']);
     }
 }
+
+// Share of new alerts that were false alarms, for the default setting. The proposal's false-positive target is below 15%.
+if (in_array('--false-share', $argv, true)) {
+    $default = array_values($results)[0];
+    printf("\nDefault setting: %d new alerts, %d false, false-alert share %.1f%% (proposal target: below 15%%).\n",
+        $default['alerts'], $default['false_alerts'], $default['alerts'] ? $default['false_alerts'] / $default['alerts'] * 100 : 0);
+}

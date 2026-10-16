@@ -1,52 +1,38 @@
 # How to run the tests
 
-All commands from the project folder (`C:\dev\symptom-tracker`) in Git Bash.
+All commands are run from the project folder in Git Bash. PHP 8.3 or later is required (`composer.json` requires `^8.3`, as does Laravel 13).
+Check your own version with `php -v` and record it in the validation document.
 
-## 1. Install the files
-Copy the **contents** of this package into the project, keeping the folder structure (`app/`, `tests/`, `docs/`).
-Do not copy the `testing-validation` folder itself into the project, or you will get `app/app/...` problems again.
-Files that already exist (`AlertRules.php`, `AlertEngine.php`, `AlertThreshold.php`) are replaced by the new versions.
-
+## 1. Tests that need no database
 ```bash
-composer dump-autoload
+php tests/Scenarios/run.php                        # 55 hand-written scenarios, with accuracy figures
+php tests/Scenarios/run.php --failed               # only the failures
+php tests/Scenarios/cohort.php                     # simulated cohort, default seed 20260105
+php tests/Scenarios/cohort.php --seed=1            # other seeds (1 to 4 were used in the report)
+php tests/Scenarios/cohort.php --false-share       # adds the share of new alerts that were false alarms
+php artisan test tests/Unit                        # unit tests of the alert rules
 ```
 
-The scenario files live in `tests/Scenarios/` with namespace `Tests\Scenarios`. Laravel's default `composer.json` maps `Tests\` to `tests/`, so no change is needed. If the classes are not found, check `autoload-dev` in `composer.json`.
-
-## 2. Tests that need no database (fast)
-```bash
-php tests/Scenarios/run.php                 # 55 scenarios, table + accuracy
-php tests/Scenarios/run.php --failed        # only failures
-php tests/Scenarios/cohort.php --markdown   # threshold comparison table for the report
-php artisan test tests/Unit
-```
-
-## 3. Full Laravel test suite (uses an in-memory sqlite database, not your PostgreSQL data)
+## 2. Full PHPUnit suite (needs PostgreSQL)
+`phpunit.xml` uses a PostgreSQL database named `symptom_tracker_test`. Create it once in pgAdmin, then:
 ```bash
 php artisan test
+php artisan test --group=performance               # the single response-time test
 ```
-Needs `pdo_sqlite` enabled in XAMPP's `php.ini`. Check with: `php -r "echo extension_loaded('pdo_sqlite') ? 'ok' : 'MISSING';"`.
-If tests fail, send me the first failure and I will work out whether the test or the app is wrong.
 
-Performance smoke test only: `php artisan test --group=performance`
-
-## 4. Load test against the real app on PostgreSQL
+## 3. Load test
 Terminal 1:
 ```bash
 PHP_CLI_SERVER_WORKERS=4 php artisan serve
 ```
-Terminal 2 (needs a clinician with at least one patient, e.g. from the demo seeder):
+Terminal 2 (needs an editor account and at least one patient; `php artisan demo:seed` creates demo patients):
 ```bash
-php tests/load/load-test.php --email=you@example.com --password=yourpassword --requests=300 --concurrency=10
+php tests/load/load-test.php --email=EDITOR_EMAIL --password=EDITOR_PASSWORD --requests=500 --concurrency=50
 ```
-It signs in once and prints p50, p95 and p99 per endpoint, and exits 0 only if p95 is under 500 ms everywhere with no failures.
-It adds low-score check-ins (pain 3) to one patient; use `--no-writes` to avoid that. Run it on your development database, not on anything you care about.
-If you see HTTP 429, the API is rate limiting; those requests are reported separately.
+It signs in once and prints p50, p95 and p99 per endpoint. It adds low-score check-ins (pain 3) to one patient, so use a
+development database, or add `--no-writes`. `php artisan serve` handles requests in a small number of PHP processes, so at high
+concurrency the figures mostly measure queueing. Wait about a minute between runs: the login route allows 6 attempts a minute.
 
-## Known risk when running on sqlite
-The alert-system migration that allows two rules per symptom changes an index on `alert_thresholds`. If it behaves differently on sqlite, `php artisan test` will fail on migration for every feature test at once. If that happens, send me the error; the fix is either in that migration or to point `phpunit.xml` at a separate PostgreSQL test database (`symptom_tracker_test`).
-
-## After the f03 / f07 fixes
-- Run `php artisan migrate` once (it lowers any saved absolute limit of 10 to 9).
-- Your own earlier test "finding f07 resending the same checkin stores it twice" asserts the OLD behaviour and will now fail. Delete that one test method (find it with `grep -rn "f07" tests`). `CheckInIdempotencyTest` replaces it.
-- Your test "finding f03 configured limit above 9 lets a critical score through" still passes: it writes the limit straight into the database, which the engine still honours. Rename it if you like; `ThresholdLimitTest` covers the form.
+## 4. API (Postman)
+Import `postman/symptom-tracker.postman_collection.json`, start the app with `php artisan serve`, and run the collection.
+Wait a minute between runs for the same reason (login rate limit).

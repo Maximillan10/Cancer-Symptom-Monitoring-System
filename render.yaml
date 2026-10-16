@@ -39,5 +39,7 @@ services:
         value: "true"
       - key: EDITOR_EMAILS
         value: dr.mwansa@example.com   # only this account can add or edit patients
+      - key: EDITOR_PASSWORD
+        sync: false          # you type this in the Render dashboard; it is never stored in the repository
       - key: SEED_DEMO
         value: "true"        # set to false after the first successful deploy

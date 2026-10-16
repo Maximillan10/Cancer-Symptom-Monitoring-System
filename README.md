@@ -79,7 +79,7 @@ If the password contains `#` or `$`, wrap it in double quotes.
 ### 4. Run the migrations
 
 ```bash
-php artisan migrate --seed
+php artisan migrate
 ```
 
 ### 5. Start the app
@@ -108,19 +108,31 @@ php artisan migrate
 ## Running the project and tests
 
 ```bash
-php artisan migrate --seed     # creates tables and simulated patients
+php artisan migrate            # creates the tables
+php artisan demo:seed          # simulated patients and check-ins (see below)
 php artisan serve              # http://127.0.0.1:8000
 php artisan test               # full PHPUnit suite
 ```
 
-Log in with the seeded demo clinician (see `docs/README.md` for the email and password).
+### Demo data
+
+`php artisan demo:seed` fills an empty system with 15 simulated patients and 14 days of check-ins each, so the
+dashboard shows critical and warning alerts, trends and reports straight away. The check-ins go through the normal
+alert engine, so the alerts are produced by the real rules. Patients are assigned to the editor account
+(the first address in `EDITOR_EMAILS`, otherwise the first clinician).
+
+- It only adds data when there are no patients yet, so it cannot duplicate or overwrite real records.
+- `php artisan demo:seed --fresh` deletes all patients, check-ins and alerts first and rebuilds the demo data.
+- On the live site, run it once from the Render shell, or set `SEED_DEMO=true` for a single deploy.
+
+Create the clinician account with `php artisan app:ensure-editor`. It reads `EDITOR_EMAILS` and `EDITOR_PASSWORD`; there is no default password, so the account is not created until `EDITOR_PASSWORD` is set. `demo:seed` needs that account to exist first.
 
 ## Repository layout
 
 | Folder | Contents |
 |---|---|
 | app/ | Controllers, models, services (alert engine), observers |
-| database/ | Migrations and seeders (25 simulated patients) |
+| database/ | Migrations, factories and seeders (`demo:seed` creates 15 simulated patients) |
 | resources/ | Blade views (dashboard, alerts, thresholds) |
 | routes/ | Web and API routes |
 | postman/ | Postman API collection |

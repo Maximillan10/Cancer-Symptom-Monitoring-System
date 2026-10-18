@@ -21,17 +21,21 @@ php artisan test --group=performance               # the single response-time te
 ```
 
 ## 3. Load test
-Terminal 1:
+Terminal 1 (Windows: PHP's built-in server runs one process there and does not support several workers):
 ```bash
-PHP_CLI_SERVER_WORKERS=4 php artisan serve
+php artisan serve --no-reload
 ```
+On Linux or in Docker, `PHP_CLI_SERVER_WORKERS=4 php artisan serve --no-reload` starts four workers.
+
 Terminal 2 (needs an editor account and at least one patient; `php artisan demo:seed` creates demo patients):
 ```bash
-php tests/load/load-test.php --email=EDITOR_EMAIL --password=EDITOR_PASSWORD --requests=500 --concurrency=50
+php tests/load/load-test.php --email=EDITOR_EMAIL --password=EDITOR_PASSWORD --requests=100 --concurrency=1
+php tests/load/load-test.php --email=EDITOR_EMAIL --password=EDITOR_PASSWORD --requests=100 --concurrency=5
 ```
 It signs in once and prints p50, p95 and p99 per endpoint. It adds low-score check-ins (pain 3) to one patient, so use a
-development database, or add `--no-writes`. `php artisan serve` handles requests in a small number of PHP processes, so at high
-concurrency the figures mostly measure queueing. Wait about a minute between runs: the login route allows 6 attempts a minute.
+development database, or add `--no-writes`. With a single-process server, high concurrency (for example 50) mostly measures
+queueing and timeouts: on the author's Windows laptop a 50-user run failed for that reason (see `docs/TEST_REPORT.md`). Wait about a
+minute between runs: the login route allows 6 attempts a minute.
 
 ## 4. API (Postman)
 Import `postman/symptom-tracker.postman_collection.json`, start the app with `php artisan serve`, and run the collection.
